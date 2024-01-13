@@ -25,7 +25,7 @@ class MySymbolProcessor(private val environment: SymbolProcessorEnvironment): Sy
 
         val files = resolver.getAllFiles()
 
-        val allClass = mutableListOf<MyClass>()
+        val allClass = mutableMapOf<String, MyClass>()
         val dictNameId = mutableMapOf<String,Int>()
 
         if (processCount > 1) { // second time pass
@@ -42,61 +42,114 @@ class MySymbolProcessor(private val environment: SymbolProcessorEnvironment): Sy
                     logger.warn("class: $dec")
 
                     var mc = MyClass()
-                    allClass.add(mc)
                     mc.id = allClass.size
                     mc.file = file.fileName
-                    mc.name = dec.toString()
-                    mc.kind = "class"
-                    mc.detail = mc.name
+                    mc.name = dec.qualifiedName?.asString() ?: dec.toString()
+                    mc.kind = dec.classKind.toString()
+                    mc.label = mc.name
 
-                    dictNameId[mc.name] = mc.id
+                    allClass[mc.name] = mc
 
                     dec.superTypes.forEach {
-                        mc.parents.add(it.toString())
+                        val declaration = it.resolve().declaration
+                        (declaration as? KSClassDeclaration)?.classKind?.let {s->
+                            if (s == ClassKind.INTERFACE && dec.classKind != ClassKind.INTERFACE) {
+                                mc.realization.add(qualifiedName(it))
+                            } else {
+                                mc.generalization.add(qualifiedName(it))
+                            }
+                        }
                     }
 
-                    mc.detail += "\\n-------------------------\\n"
+                    mc.label += "\\n-------------------------\\n"
                     dec.getAllProperties().forEach { prop ->
-                        mc.variables.add(prop.type.toString())
-                        mc.detail += "- $prop: ${prop.type}\\n"
+                        mc.association.add(qualifiedName(prop.type))
+                        mc.label += "- $prop: ${prop.type}\\n"
                     }
 
-                    mc.detail += "-------------------------\\n"
-                    dec.getAllFunctions().forEach { func ->
-                        if (func.toString() == "<init>") {
+                    mc.label += "-------------------------\\n"
+                    dec.getDeclaredFunctions().forEach { func ->
+                        if (func.toString() == "<init>" || func.toString().startsWith("synthetic constructor for")) {
                             // ignore
                         } else {
-                            mc.temporaries.add(func.returnType.toString())
+                            func.returnType?.let {
+                                mc.dependency.add(qualifiedName(it))
+                            }
                             func.parameters.forEach {
-                                mc.temporaries.add(it.type.toString())
+                                mc.dependency.add(qualifiedName(it.type))
                             }
                             val l = func.parameters.joinToString {
                                 it.type.toString()
                             }
-                            mc.detail += "+ $func($l): ${func.returnType}\\n"
+                            mc.label += "+ $func($l): ${func.returnType}\\n"
                         }
                     }
+
+//                    mc.label = ""
 
                 }
             }
         }
 
-        environment.logger.warn("ksp")
-        environment.logger.warn(environment.options.toString())
+        saveNodesFile(allClass)
+        saveEdgesFile(allClass)
 
+        return emptyList()
+    }
+
+    private fun saveNodesFile(allClass: MutableMap<String, MyClass>) {
         val f = environment.codeGenerator.createNewFile(
             Dependencies(false),
             "",
-            "data",
+            "nodes",
             extensionName = "json"
         )
-        val json = MyClass.toJsonString(allClass)
-        logger.warn(json)
-
+        val json = MyClass.toJsonString(allClass.values)
         f.write(json.toByteArray())
         f.close()
+    }
 
-        return emptyList()
+    private fun saveEdgesFile(allClass: MutableMap<String, MyClass>) {
+        val edges = mutableListOf<MyEdge>()
+        val f = environment.codeGenerator.createNewFile(
+            Dependencies(false),
+            "",
+            "edges",
+            extensionName = "json"
+        )
+        allClass.values.forEach { from ->
+            from.generalization.forEach {
+                allClass[it]?.let { to ->
+                    edges.add(MyEdge("generalization", from.id, to.id))
+                }
+            }
+            from.realization.forEach {
+                allClass[it]?.let { to ->
+                    edges.add(MyEdge("realization", from.id, to.id))
+                }
+            }
+            from.association.forEach {
+                allClass[it]?.let { to ->
+                    edges.add(MyEdge("association", from.id, to.id))
+                }
+            }
+            from.dependency.forEach {
+                allClass[it]?.let { to ->
+                    edges.add(MyEdge("dependency", from.id, to.id))
+                }
+            }
+        }
+        val json = MyEdge.toJsonString(edges)
+        f.write(json.toByteArray())
+        f.close()
+    }
+
+    private fun qualifiedName(type: KSTypeReference) : String {
+        val typeDeclaration = type.resolve().declaration
+        if (typeDeclaration is KSClassDeclaration) {
+            return typeDeclaration.qualifiedName?.asString() ?: typeDeclaration.toString()
+        }
+        return type.toString()
     }
 
     override fun finish() {
@@ -108,22 +161,44 @@ class MySymbolProcessor(private val environment: SymbolProcessorEnvironment): Sy
     }
 }
 
+data class MyEdge(var kind: String,
+                  var from: Int,
+                  var to: Int) {
+
+    private fun str(k: String, v: Any): String {
+        return "\"$k\":\"$v\""
+    }
+    fun toJsonString(): String {
+        return "{${str("kind", kind)}, ${str("from", from)}, ${str("to", to)}}"
+    }
+
+    companion object {
+        fun toJsonString(list:Iterable<MyEdge>): String {
+            val l = list.joinToString {
+                it.toJsonString()
+            }
+            return "[$l]"
+        }
+    }
+
+}
+
 class MyClass {
     var id = 0
     var file = ""
     var name = ""
     var kind = ""
-    var detail = ""
-    var parents = mutableListOf<String>()
-    var protocols = mutableListOf<String>()
-    var variables = mutableListOf<String>()
-    var temporaries = mutableListOf<String>()
+    var label = ""
+    var generalization = mutableListOf<String>()
+    var realization = mutableListOf<String>()
+    var association = mutableSetOf<String>()
+    var dependency = mutableSetOf<String>()
 
     private fun str(k: String, v: Any): String {
         return "\"$k\":\"$v\""
     }
 
-    private fun list(k: String, list:MutableList<String>): String {
+    private fun list(k: String, list:Iterable<String>): String {
         val l = list.joinToString {
             "\"$it\""
         }
@@ -131,11 +206,11 @@ class MyClass {
     }
 
     fun toJsonString(): String {
-        return "{\"id\": $id, ${str("file", file)}, ${str("name", name)}, ${str("detail", detail)}, ${str("kind", kind)}, ${list("parents", parents)}, ${list("protocols", protocols)}, ${list("variables", variables)}, ${list("temporaries", temporaries)}}"
+        return "{\"id\": $id, ${str("file", file)}, ${str("name", name)}, ${str("label", label)}, ${str("kind", kind)}, ${list("generalization", generalization)}, ${list("realization", realization)}, ${list("association", association)}, ${list("dependency", dependency)}}"
     }
 
     companion object {
-        fun toJsonString(list:MutableList<MyClass>): String {
+        fun toJsonString(list:Iterable<MyClass>): String {
             val l = list.joinToString {
                 it.toJsonString()
             }

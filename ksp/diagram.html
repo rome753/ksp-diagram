@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Network | Basic Usage | Standalone Build</title>
+
+    <style type="text/css">
+      html,
+      body,
+      #mynetwork {
+        margin: 0px;
+        padding: 0px;
+      }
+
+      #mynetwork {
+        position: fixed;
+        left: 300px;
+        top: 0px;
+        bottom: 0px;
+        right: 0px;
+        min-height: 100vh;
+        background: white;
+        border-left: 1px solid lightgray;
+      }
+
+      #myfilter {
+        position: fixed;
+        left: 0px;
+        top: 0px;
+        bottom: 0px;
+        width: 300px;
+        min-height: 100vh;
+        background: white;
+      }
+
+      #mycheck {
+        position: fixed;
+        left: 40px;
+        top: 4px;
+      }
+
+      #mytree {
+        overflow: scroll;
+        position: fixed;
+        left: 0px;
+        top: 100px;
+        bottom: 0px;
+        width: 300px;
+        border-top: 1px solid lightgray;
+      }
+
+      #dir {
+        font-size: 12px;
+      }
+      #file {
+        font-size: 12px;
+      }
+    </style>
+
+    <script
+      type="text/javascript"
+      src="./vis-network.min.js"
+    ></script>
+
+    <script src="diagram.js" defer></script>
+  </head>
+
+  <body>
+
+    <div id="myfilter">
+      <div id="mycheck"></div>
+      <div id="mytree"></div>
+    </div>
+
+    <div id="mynetwork"></div>
+  
+  </body>
+</html>
