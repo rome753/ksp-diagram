@@ -9,8 +9,9 @@ main();
 
 function main() {
     Promise.all([
-        readTextFile('build/generate/edges.json'),
-        readTextFile('build/generate/nodes.json')
+        readTextFile('build/generated/dir.json'),
+        readTextFile('build/generated/edges.json'),
+        readTextFile('build/generated/nodes.json')
     ]).then(() => {
         console.log('Both files have been successfully read.');
         createDiagram()

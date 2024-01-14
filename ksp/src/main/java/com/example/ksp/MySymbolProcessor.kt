@@ -26,7 +26,6 @@ class MySymbolProcessor(private val environment: SymbolProcessorEnvironment): Sy
         val files = resolver.getAllFiles()
 
         val allClass = mutableMapOf<String, MyClass>()
-        val dictNameId = mutableMapOf<String,Int>()
 
         if (processCount > 1) { // second time pass
             files.forEach { file ->
@@ -46,7 +45,7 @@ class MySymbolProcessor(private val environment: SymbolProcessorEnvironment): Sy
                     mc.file = file.fileName
                     mc.name = dec.qualifiedName?.asString() ?: dec.toString()
                     mc.kind = dec.classKind.toString()
-                    mc.label = mc.name
+                    mc.label = dec.toString()
 
                     allClass[mc.name] = mc
 
@@ -84,9 +83,6 @@ class MySymbolProcessor(private val environment: SymbolProcessorEnvironment): Sy
                             mc.label += "+ $func($l): ${func.returnType}\\n"
                         }
                     }
-
-//                    mc.label = ""
-
                 }
             }
         }
@@ -145,11 +141,16 @@ class MySymbolProcessor(private val environment: SymbolProcessorEnvironment): Sy
     }
 
     private fun qualifiedName(type: KSTypeReference) : String {
-        val typeDeclaration = type.resolve().declaration
-        if (typeDeclaration is KSClassDeclaration) {
-            return typeDeclaration.qualifiedName?.asString() ?: typeDeclaration.toString()
+        var ret = type.toString()
+        try {
+            val typeDeclaration = type.resolve().declaration
+            if (typeDeclaration is KSClassDeclaration) {
+                ret = typeDeclaration.qualifiedName?.asString() ?: typeDeclaration.toString()
+            }
+        } catch (t: Throwable) {
+            t.printStackTrace()
         }
-        return type.toString()
+        return ret
     }
 
     override fun finish() {
