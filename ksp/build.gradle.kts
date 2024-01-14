@@ -9,7 +9,7 @@ java {
 }
 
 dependencies {
-    implementation("com.google.devtools.ksp:symbol-processing-api:1.9.0-1.0.13")//引入ksp
+    implementation("com.google.devtools.ksp:symbol-processing-api:1.8.0-1.0.8")//引入ksp
 }
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
     kotlinOptions {
