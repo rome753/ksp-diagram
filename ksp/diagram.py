@@ -56,10 +56,9 @@ if __name__ == '__main__':
     f.write(json.dumps(tree))
     f.close()
 
-
-    appModuleName = 'app'
     debugName = 'debug'
-    resPath = os.path.join(projPath, appModuleName, 'build', 'generated', 'ksp', debugName, 'resources')
+    # Project/app/build/generated/ksp/debug/resources
+    resPath = os.path.join(projPath, 'build', 'generated', 'ksp', debugName, 'resources')
     print('resPath ' + resPath)
     f1 = os.path.join(resPath, 'nodes.json')
     f2 = os.path.join(resPath, 'edges.json')

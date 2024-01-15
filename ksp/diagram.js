@@ -165,7 +165,7 @@ function createDiagram() {
     };
     var options = {
         physics: createPhysicsConfig(),
-
+        
         // layout: {
         //     hierarchical: {
         //       direction: 'Up-Down',
@@ -206,8 +206,10 @@ function setNode(node) {
     }
     Object.assign(node, {
         // label: label,
+        title: node.label,
         shape: shape,
         shapeProperties: dashes ? { borderDashes: [5, 5] } : {},
+        font: { align: 'left' },
         physics: true,
         // color: { background: "transparent"},
     })
@@ -215,6 +217,7 @@ function setNode(node) {
 
 function setEdge(edge) {
     var arrowType = 'triangle'
+    var scaleFactor = 2
     var dashes = false
     switch(edge.kind) {
         case 'generalization':
@@ -224,9 +227,11 @@ function setEdge(edge) {
             break
         case 'association':
             arrowType = 'vee'
+            scaleFactor = 1
             break
         case 'dependency':
             arrowType = 'vee'
+            scaleFactor = 1
             dashes = true
             break
     }
@@ -235,6 +240,7 @@ function setEdge(edge) {
             to: {
                 enabled: true,
                 type: arrowType,
+                scaleFactor: scaleFactor,
             },
         },
         dashes: dashes,
